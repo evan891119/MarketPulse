@@ -1,9 +1,15 @@
-import type { MarketSnapshot } from "@/types/market";
+import type { ChartPoint, MarketQuote, MarketSnapshot } from "@/types/market";
+import type { ChartInterval } from "./DashboardShell";
 
 const width = 760;
 const height = 320;
 
 type MainChartProps = {
+  chart: ChartPoint[];
+  interval: ChartInterval;
+  intervals: readonly ChartInterval[];
+  onSelectInterval: (interval: ChartInterval) => void;
+  quote: MarketQuote | null;
   snapshot: MarketSnapshot | null;
 };
 
@@ -29,9 +35,16 @@ function getLinePoints(values: number[]) {
     .join(" ");
 }
 
-export function MainChart({ snapshot }: MainChartProps) {
-  const primaryQuote = snapshot?.symbols[0] ?? null;
-  const values = snapshot?.chart.map((point) => point.value) ?? [0, 0];
+export function MainChart({
+  chart,
+  interval,
+  intervals,
+  onSelectInterval,
+  quote,
+  snapshot,
+}: MainChartProps) {
+  const values =
+    chart.length > 0 ? chart.map((point) => point.value) : [quote?.price ?? 0, quote?.price ?? 0];
   const linePoints = getLinePoints(values);
   const mode = snapshot?.mode ?? "demo";
 
@@ -40,8 +53,8 @@ export function MainChart({ snapshot }: MainChartProps) {
       <div className="flex flex-col gap-3 border-b border-slate-800 px-4 py-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold text-white">
-            {primaryQuote
-              ? `${primaryQuote.name} ${primaryQuote.symbol}`
+            {quote
+              ? `${quote.name} ${quote.symbol}`
               : "Taiwan Stock"}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -50,17 +63,19 @@ export function MainChart({ snapshot }: MainChartProps) {
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
-          {["1m", "5m", "15m", "1h", "1d"].map((interval) => (
+          {intervals.map((item) => (
             <button
-              key={interval}
+              key={item}
+              aria-pressed={item === interval}
               className={
-                interval === "1m"
+                item === interval
                   ? "h-8 rounded-md bg-emerald-400 px-3 font-medium text-slate-950"
                   : "h-8 rounded-md border border-slate-800 px-3 font-medium text-slate-400 hover:border-slate-600 hover:text-slate-200"
               }
+              onClick={() => onSelectInterval(item)}
               type="button"
             >
-              {interval}
+              {item}
             </button>
           ))}
         </div>
@@ -110,7 +125,7 @@ export function MainChart({ snapshot }: MainChartProps) {
           <div className="absolute left-4 top-4 rounded-md border border-slate-700 bg-slate-950/80 px-3 py-2">
             <p className="text-xs text-slate-500">Price</p>
             <p className="text-lg font-semibold text-emerald-300">
-              {primaryQuote?.price.toFixed(2) ?? "--"}
+              {quote?.price.toFixed(2) ?? "--"}
             </p>
           </div>
         </div>

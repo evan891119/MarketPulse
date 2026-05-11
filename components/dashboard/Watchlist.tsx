@@ -1,6 +1,8 @@
 import type { MarketQuote } from "@/types/market";
 
 type WatchlistProps = {
+  onSelectSymbol: (symbol: string) => void;
+  selectedSymbol: string | null;
   symbols: MarketQuote[];
 };
 
@@ -8,7 +10,11 @@ const numberFormatter = new Intl.NumberFormat("zh-TW", {
   maximumFractionDigits: 2,
 });
 
-export function Watchlist({ symbols }: WatchlistProps) {
+export function Watchlist({
+  onSelectSymbol,
+  selectedSymbol,
+  symbols,
+}: WatchlistProps) {
   return (
     <aside className="rounded-lg border border-slate-800 bg-slate-950/70">
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
@@ -21,11 +27,18 @@ export function Watchlist({ symbols }: WatchlistProps) {
       <div className="divide-y divide-slate-800/80">
         {symbols.map((item) => {
           const isUp = item.change >= 0;
+          const isSelected = item.symbol === selectedSymbol;
 
           return (
             <button
               key={item.symbol}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-4 text-left transition hover:bg-slate-900/80"
+              aria-pressed={isSelected}
+              className={
+                isSelected
+                  ? "grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-l-2 border-emerald-300 bg-slate-900 px-4 py-4 text-left transition"
+                  : "grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-l-2 border-transparent px-4 py-4 text-left transition hover:bg-slate-900/80"
+              }
+              onClick={() => onSelectSymbol(item.symbol)}
               type="button"
             >
               <span className="min-w-0">
