@@ -15,12 +15,12 @@ quotes without exposing credentials in browser code.
 
 ## Market Data Modes
 
-MarketPulse currently supports a safe demo provider and a Shioaji provider
-skeleton.
+MarketPulse currently supports a safe demo provider and a local Shioaji bridge.
 
 - `demo`: returns Taiwan stock demo data for local UI development.
-- `shioaji`: checks server-side Shioaji configuration and falls back to an
-  explicit Offline state until the Python streaming bridge is implemented.
+- `shioaji`: reads a local snapshot file written by the Python Shioaji quote
+  bridge and falls back to an explicit Offline state when the bridge is not
+  running.
 
 The frontend reads market data from `/api/market`; it does not import Shioaji
 or read secrets directly.
@@ -61,11 +61,40 @@ Shioaji-backed mode is reserved for server-side integration:
 MARKET_DATA_PROVIDER=shioaji
 SHIOAJI_API_KEY=your_server_side_key
 SHIOAJI_SECRET_KEY=your_server_side_secret
+SHIOAJI_SYMBOLS=2330,2317,2454,2412
+SHIOAJI_SNAPSHOT_FILE=shioaji-snapshot.json
 SHIOAJI_FORCE_SIMULATION=true
 ```
 
 Never prefix Shioaji credentials with `NEXT_PUBLIC_`; that would expose them to
 the browser bundle.
+
+### Shioaji Quote Bridge
+
+Install the Python bridge dependency in your Python environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r services/shioaji-bridge/requirements.txt
+```
+
+Run the bridge from the repository root:
+
+```bash
+npm run shioaji:bridge
+```
+
+The bridge uses `sj.Shioaji(simulation=True)`, subscribes to stock tick and
+bid/ask quotes, and writes the latest snapshot to
+`.marketpulse/shioaji-snapshot.json` by default. It does not activate CA,
+access account data, or call order APIs.
+
+Run the Next.js app in a separate terminal:
+
+```bash
+npm run dev
+```
 
 ## Build
 
@@ -94,8 +123,6 @@ and a backend bridge that can run the Python Shioaji client.
 
 ## Future Roadmap
 
-- Implement the Shioaji Python streaming bridge for tick and bid/ask callbacks
-- Persist the latest Shioaji snapshot for `/api/market`
 - Add polling or streaming updates from the Next.js frontend
 - Add provider tests and disconnected/reconnecting UI states
 - Prepare deployment topology for Vercel frontend plus a Shioaji-capable backend

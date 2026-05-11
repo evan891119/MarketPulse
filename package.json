@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "shioaji:bridge": ".venv/bin/python services/shioaji-bridge/bridge.py"
   },
   "dependencies": {
     "next": "16.2.6",
