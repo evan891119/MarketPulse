@@ -112,21 +112,53 @@ npm run start
 
 ## Deploy to Vercel
 
-Demo mode does not require API keys, private environment variables, or a custom
-backend server. Shioaji-backed realtime quotes require server-side credentials
-and a backend bridge that can run the Python Shioaji client.
+Demo mode can be deployed to Vercel as a standard Next.js app. It does not
+require API keys, private environment variables, a Python runtime, or a custom
+backend server.
 
 1. Import the repository in Vercel.
 2. Keep the default Next.js framework settings.
 3. Use `npm run build` as the build command.
-4. Deploy.
+4. Set `MARKET_DATA_PROVIDER=demo` or leave environment variables unset.
+5. Deploy.
+
+### Shioaji Deployment Topology
+
+Shioaji-backed realtime quotes require a long-running Python process. Vercel
+serverless functions are not the right place to run the Shioaji bridge because
+they are request-scoped and cannot maintain quote subscriptions.
+
+Use this topology for Shioaji-backed mode:
+
+- Vercel: hosts the Next.js dashboard.
+- Long-running host: runs `npm run shioaji:bridge` on a machine that can keep a
+  Python process alive, such as a local machine, VPS, NAS, or internal server.
+- Shared data boundary: the Next.js app reads the bridge snapshot from
+  `.marketpulse/shioaji-snapshot.json` in local/dev mode. For production
+  Shioaji-backed deployment, replace this local file boundary with a durable
+  store or private internal API reachable by the dashboard.
+
+Do not put Shioaji credentials in Vercel unless the deployment also includes a
+secure server-side bridge design. Never expose Shioaji credentials through
+`NEXT_PUBLIC_*`.
+
+### Deployment Checklist
+
+- `npm run build` passes.
+- `.env.local` is not committed.
+- `.marketpulse/` runtime snapshots are not committed.
+- `.venv/` and Python bytecode are not committed.
+- No API keys, private tokens, CA certificate paths/passwords, or account data
+  are committed.
+- Demo deployment works without environment variables.
+- Shioaji bridge remains quote-only and `simulation=True`.
 
 ## Future Roadmap
 
-- Add polling or streaming updates from the Next.js frontend
-- Add provider tests and disconnected/reconnecting UI states
-- Prepare deployment topology for Vercel frontend plus a Shioaji-capable backend
-- Deployment readiness checks before adding live integrations
+- Add provider tests for demo, Shioaji, stale snapshot, and off-hours fallback
+- Replace local snapshot files with a production-safe bridge data boundary
+- Add deployment automation for the long-running Shioaji bridge host
+- Add observability for bridge heartbeat, stale snapshots, and Shioaji reconnects
 
 ## Safety Notes
 
