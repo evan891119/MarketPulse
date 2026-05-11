@@ -1,8 +1,9 @@
 # MarketPulse
 
-MarketPulse is a real-time financial market dashboard MVP. The current phase is
-focused on a clean, maintainable, Vercel-ready foundation before adding market
-data, dashboard modules, or simulated realtime updates.
+MarketPulse is a Taiwan-market-focused financial dashboard MVP. The current
+architecture keeps market data behind a server-side provider boundary so the
+frontend can run in demo mode today and later read Shioaji-backed realtime
+quotes without exposing credentials in browser code.
 
 ## Tech Stack
 
@@ -10,7 +11,19 @@ data, dashboard modules, or simulated realtime updates.
 - TypeScript
 - React
 - Tailwind CSS
-- Vercel-ready project structure
+- Server-side market data provider boundary
+
+## Market Data Modes
+
+MarketPulse currently supports a safe demo provider and a Shioaji provider
+skeleton.
+
+- `demo`: returns Taiwan stock demo data for local UI development.
+- `shioaji`: checks server-side Shioaji configuration and falls back to an
+  explicit Offline state until the Python streaming bridge is implemented.
+
+The frontend reads market data from `/api/market`; it does not import Shioaji
+or read secrets directly.
 
 ## Local Development
 
@@ -28,6 +41,32 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Environment
+
+Copy the example file when you need local configuration:
+
+```bash
+cp .env.example .env.local
+```
+
+Default demo mode:
+
+```bash
+MARKET_DATA_PROVIDER=demo
+```
+
+Shioaji-backed mode is reserved for server-side integration:
+
+```bash
+MARKET_DATA_PROVIDER=shioaji
+SHIOAJI_API_KEY=your_server_side_key
+SHIOAJI_SECRET_KEY=your_server_side_secret
+SHIOAJI_FORCE_SIMULATION=true
+```
+
+Never prefix Shioaji credentials with `NEXT_PUBLIC_`; that would expose them to
+the browser bundle.
+
 ## Build
 
 Create a production build:
@@ -44,8 +83,9 @@ npm run start
 
 ## Deploy to Vercel
 
-This MVP does not require API keys, private environment variables, or a custom
-backend server.
+Demo mode does not require API keys, private environment variables, or a custom
+backend server. Shioaji-backed realtime quotes require server-side credentials
+and a backend bridge that can run the Python Shioaji client.
 
 1. Import the repository in Vercel.
 2. Keep the default Next.js framework settings.
@@ -54,15 +94,19 @@ backend server.
 
 ## Future Roadmap
 
-- Dashboard layout with header, watchlist, chart, market info, and trades/order
-  book panels
-- Mock market data provider with typed interfaces
-- Simulated realtime updates and connection states
-- Provider adapters for Binance WebSocket, Bybit WebSocket, stock quote APIs,
-  and strategy signal APIs
+- Implement the Shioaji Python streaming bridge for tick and bid/ask callbacks
+- Persist the latest Shioaji snapshot for `/api/market`
+- Add polling or streaming updates from the Next.js frontend
+- Add provider tests and disconnected/reconnecting UI states
+- Prepare deployment topology for Vercel frontend plus a Shioaji-capable backend
 - Deployment readiness checks before adding live integrations
 
 ## Safety Notes
 
-This phase intentionally excludes API keys, order placement, real trading,
-login secrets, private tokens, and any feature that could trigger live trades.
+The app intentionally excludes order placement, order modification, order
+cancelation, account balance, positions, P&L, CA certificate activation, and any
+feature that could trigger live trades.
+
+Shioaji integration must stay quote-only and simulation-only until a separate
+trading safety review explicitly changes that boundary. Credentials belong in
+server-side environment variables only and must not be committed.
