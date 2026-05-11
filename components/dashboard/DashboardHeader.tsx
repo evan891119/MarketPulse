@@ -20,6 +20,13 @@ const dotStyles: Record<MarketConnectionStatus, string> = {
   offline: "bg-rose-300 shadow-[0_0_16px_rgba(253,164,175,0.8)]",
 };
 
+const modeLabels = {
+  demo: "Demo",
+  live: "Live stream",
+  snapshot: "Snapshot",
+  kbar: "KBar fallback",
+};
+
 export function DashboardHeader({
   snapshot,
   isLoading,
@@ -64,6 +71,7 @@ export function DashboardHeader({
           <div className="mt-2 flex items-center gap-2 font-medium">
             <span className={`h-2 w-2 rounded-full ${dotStyles[status]}`} />
             {statusLabel}
+            {snapshot ? ` · ${modeLabels[snapshot.mode]}` : ""}
           </div>
         </div>
 

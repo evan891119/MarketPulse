@@ -9,6 +9,32 @@ import { useMarketData } from "@/hooks/useMarketData";
 
 export function DashboardShell() {
   const { data, isLoading, error } = useMarketData();
+  const primaryQuote = data?.symbols[0] ?? null;
+  const orderBook = data?.orderBook ?? { asks: [], bids: [] };
+  const hasOrderBookLevels = orderBook.asks.length > 0 || orderBook.bids.length > 0;
+  const fallbackOrderBook =
+    !hasOrderBookLevels && primaryQuote
+      ? {
+          asks:
+            primaryQuote.askPrice && primaryQuote.askVolume
+              ? [
+                  {
+                    price: primaryQuote.askPrice,
+                    size: primaryQuote.askVolume,
+                  },
+                ]
+              : [],
+          bids:
+            primaryQuote.bidPrice && primaryQuote.bidVolume
+              ? [
+                  {
+                    price: primaryQuote.bidPrice,
+                    size: primaryQuote.bidVolume,
+                  },
+                ]
+              : [],
+        }
+      : orderBook;
 
   return (
     <main className="min-h-screen bg-[#070b12] text-slate-100">
@@ -24,10 +50,14 @@ export function DashboardShell() {
 
           <div className="flex min-w-0 flex-col gap-4">
             <MainChart snapshot={data} />
-            <MarketInfo quote={data?.symbols[0] ?? null} />
+            <MarketInfo quote={primaryQuote} />
           </div>
 
-          <TradesPanel orderBook={data?.orderBook} trades={data?.trades ?? []} />
+          <TradesPanel
+            mode={data?.mode ?? "demo"}
+            orderBook={fallbackOrderBook}
+            trades={data?.trades ?? []}
+          />
         </section>
       </div>
     </main>

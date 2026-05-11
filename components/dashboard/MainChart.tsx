@@ -7,6 +7,13 @@ type MainChartProps = {
   snapshot: MarketSnapshot | null;
 };
 
+const modeLabels = {
+  demo: "Demo data",
+  live: "Live Tick stream",
+  snapshot: "Shioaji snapshot",
+  kbar: "Historical KBar fallback",
+};
+
 function getLinePoints(values: number[]) {
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -26,6 +33,7 @@ export function MainChart({ snapshot }: MainChartProps) {
   const primaryQuote = snapshot?.symbols[0] ?? null;
   const values = snapshot?.chart.map((point) => point.value) ?? [0, 0];
   const linePoints = getLinePoints(values);
+  const mode = snapshot?.mode ?? "demo";
 
   return (
     <section className="rounded-lg border border-slate-800 bg-slate-950/70">
@@ -37,7 +45,7 @@ export function MainChart({ snapshot }: MainChartProps) {
               : "Taiwan Stock"}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Intraday line chart · 1m interval · {snapshot?.source ?? "demo"}
+            {modeLabels[mode]} · Asia/Taipei market time
           </p>
         </div>
 

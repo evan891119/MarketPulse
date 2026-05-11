@@ -9,6 +9,8 @@ type MarketDataState = {
   error: string | null;
 };
 
+const refreshIntervalMs = 5000;
+
 export function useMarketData() {
   const [state, setState] = useState<MarketDataState>({
     data: null,
@@ -47,9 +49,11 @@ export function useMarketData() {
     }
 
     void loadMarketData();
+    const intervalId = window.setInterval(loadMarketData, refreshIntervalMs);
 
     return () => {
       isMounted = false;
+      window.clearInterval(intervalId);
     };
   }, []);
 

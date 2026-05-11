@@ -6,6 +6,7 @@ export class DemoMarketDataProvider implements MarketDataProvider {
   async getSnapshot(): Promise<MarketSnapshot> {
     return {
       source: "demo",
+      mode: "demo",
       status: "demo",
       statusLabel: "Demo",
       primarySymbol: "2330",

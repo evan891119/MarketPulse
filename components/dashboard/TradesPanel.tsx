@@ -1,15 +1,23 @@
-import type { OrderBook, TradeTick } from "@/types/market";
+import type { MarketDataMode, OrderBook, TradeTick } from "@/types/market";
 
 type TradesPanelProps = {
   trades: TradeTick[];
   orderBook?: OrderBook;
+  mode: MarketDataMode;
 };
 
 const priceFormatter = new Intl.NumberFormat("zh-TW", {
   maximumFractionDigits: 2,
 });
 
-export function TradesPanel({ trades, orderBook }: TradesPanelProps) {
+const modeLabels: Record<MarketDataMode, string> = {
+  demo: "demo",
+  live: "live",
+  snapshot: "snapshot",
+  kbar: "kbar fallback",
+};
+
+export function TradesPanel({ trades, orderBook, mode }: TradesPanelProps) {
   const levels = [
     ...(orderBook?.asks ?? []).map((level) => ({ ...level, side: "sell" })),
     ...(orderBook?.bids ?? []).map((level) => ({ ...level, side: "buy" })),
@@ -21,7 +29,7 @@ export function TradesPanel({ trades, orderBook }: TradesPanelProps) {
         <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-300">
           Recent Trades
         </h2>
-        <span className="text-xs text-slate-500">tick</span>
+        <span className="text-xs text-slate-500">{modeLabels[mode]}</span>
       </div>
 
       <div className="grid grid-cols-[1fr_1fr_0.8fr] gap-2 border-b border-slate-800 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-500">
@@ -57,7 +65,8 @@ export function TradesPanel({ trades, orderBook }: TradesPanelProps) {
         })}
         {trades.length === 0 && (
           <div className="px-4 py-6 text-sm text-slate-500">
-            Loading tick data...
+            No trade ticks available for this session. Snapshot and KBar data
+            remain active outside regular market hours.
           </div>
         )}
       </div>
@@ -86,6 +95,12 @@ export function TradesPanel({ trades, orderBook }: TradesPanelProps) {
               </span>
             </div>
           ))}
+          {levels.length === 0 && (
+            <div className="text-sm text-slate-500">
+              No bid/ask levels available. Start the bridge during market hours
+              for full depth updates.
+            </div>
+          )}
         </div>
       </div>
     </aside>

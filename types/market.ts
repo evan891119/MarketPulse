@@ -5,6 +5,7 @@ export type MarketConnectionStatus =
   | "demo";
 
 export type MarketDataSource = "demo" | "shioaji";
+export type MarketDataMode = "demo" | "live" | "snapshot" | "kbar";
 
 export type MarketSymbol = {
   symbol: string;
@@ -54,6 +55,7 @@ export type OrderBook = {
 
 export type MarketSnapshot = {
   source: MarketDataSource;
+  mode: MarketDataMode;
   status: MarketConnectionStatus;
   statusLabel: string;
   primarySymbol: string;
