@@ -37,6 +37,7 @@ export type ChartPoint = {
 
 export type TradeTick = {
   id: string;
+  symbol?: string;
   time: string;
   price: number;
   size: number;

@@ -104,12 +104,12 @@ export class DemoMarketDataProvider implements MarketDataProvider {
         ["09:48", 932],
       ].map(([time, value]) => ({ time: String(time), value: Number(value) })),
       trades: [
-        { id: "t-1", time: "09:48:21", price: 932, size: 18, side: "buy" },
-        { id: "t-2", time: "09:48:18", price: 931, size: 7, side: "sell" },
-        { id: "t-3", time: "09:48:11", price: 932, size: 23, side: "buy" },
-        { id: "t-4", time: "09:48:03", price: 930, size: 12, side: "sell" },
-        { id: "t-5", time: "09:47:58", price: 931, size: 31, side: "buy" },
-        { id: "t-6", time: "09:47:42", price: 930, size: 9, side: "sell" },
+        { id: "t-1", symbol: "2330", time: "09:48:21", price: 932, size: 18, side: "buy" },
+        { id: "t-2", symbol: "2330", time: "09:48:18", price: 931, size: 7, side: "sell" },
+        { id: "t-3", symbol: "2330", time: "09:48:11", price: 932, size: 23, side: "buy" },
+        { id: "t-4", symbol: "2330", time: "09:48:03", price: 930, size: 12, side: "sell" },
+        { id: "t-5", symbol: "2330", time: "09:47:58", price: 931, size: 31, side: "buy" },
+        { id: "t-6", symbol: "2330", time: "09:47:42", price: 930, size: 9, side: "sell" },
       ],
       orderBook: {
         asks: [

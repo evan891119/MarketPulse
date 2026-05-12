@@ -244,6 +244,7 @@ class SnapshotStore:
                 0,
                 {
                     "id": f"{symbol}-{time.time_ns()}",
+                    "symbol": symbol,
                     "time": local_time_label(tick_time),
                     "price": price,
                     "size": int_value(getattr(tick, "volume", None)),
@@ -427,6 +428,7 @@ class SnapshotStore:
             recent_trades.append(
                 {
                     "id": f"historical-{self.symbols[0]}-{source_index}",
+                    "symbol": self.symbols[0],
                     "time": local_time_label(timestamp),
                     "price": decimal_to_float(close),
                     "size": int_value(volume),

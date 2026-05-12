@@ -7,7 +7,7 @@ import { MarketInfo } from "./MarketInfo";
 import { TradesPanel } from "./TradesPanel";
 import { Watchlist } from "./Watchlist";
 import { useMarketData } from "@/hooks/useMarketData";
-import type { ChartPoint, MarketQuote } from "@/types/market";
+import type { ChartPoint, MarketQuote, OrderBook, TradeTick } from "@/types/market";
 
 const intervals = ["1m", "5m", "15m", "1h", "1d"] as const;
 export type ChartInterval = (typeof intervals)[number];
@@ -57,6 +57,32 @@ function resampleChart(chart: ChartPoint[], interval: ChartInterval) {
   return sampled.length > 0 ? sampled : chart;
 }
 
+function buildQuoteOrderBook(quote: MarketQuote | null): OrderBook {
+  if (!quote) {
+    return { asks: [], bids: [] };
+  }
+
+  return {
+    asks:
+      quote.askPrice && quote.askVolume
+        ? [{ price: quote.askPrice, size: quote.askVolume }]
+        : [],
+    bids:
+      quote.bidPrice && quote.bidVolume
+        ? [{ price: quote.bidPrice, size: quote.bidVolume }]
+        : [],
+  };
+}
+
+function getTradeSymbol(trade: TradeTick) {
+  if (trade.symbol) {
+    return trade.symbol;
+  }
+
+  const parts = trade.id.split("-");
+  return parts[0] === "historical" ? parts[1] : parts[0];
+}
+
 export function DashboardShell() {
   const { data, isLoading, error } = useMarketData();
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
@@ -80,31 +106,16 @@ export function DashboardShell() {
 
     return resampleChart(baseChart, selectedInterval);
   }, [data?.chart, data?.primarySymbol, selectedInterval, selectedQuote]);
-  const orderBook = data?.orderBook ?? { asks: [], bids: [] };
-  const hasOrderBookLevels = orderBook.asks.length > 0 || orderBook.bids.length > 0;
-  const fallbackOrderBook =
-    !hasOrderBookLevels && selectedQuote
-      ? {
-          asks:
-            selectedQuote.askPrice && selectedQuote.askVolume
-              ? [
-                  {
-                    price: selectedQuote.askPrice,
-                    size: selectedQuote.askVolume,
-                  },
-                ]
-              : [],
-          bids:
-            selectedQuote.bidPrice && selectedQuote.bidVolume
-              ? [
-                  {
-                    price: selectedQuote.bidPrice,
-                    size: selectedQuote.bidVolume,
-                  },
-                ]
-              : [],
-        }
-      : orderBook;
+  const primaryOrderBook = data?.orderBook ?? { asks: [], bids: [] };
+  const hasPrimaryOrderBookLevels =
+    primaryOrderBook.asks.length > 0 || primaryOrderBook.bids.length > 0;
+  const selectedOrderBook =
+    selectedQuote?.symbol === data?.primarySymbol && hasPrimaryOrderBookLevels
+      ? primaryOrderBook
+      : buildQuoteOrderBook(selectedQuote);
+  const selectedTrades = (data?.trades ?? []).filter(
+    (trade) => getTradeSymbol(trade) === activeSymbol,
+  );
 
   return (
     <main className="min-h-screen bg-[#070b12] text-slate-100">
@@ -136,8 +147,8 @@ export function DashboardShell() {
 
           <TradesPanel
             mode={data?.mode ?? "demo"}
-            orderBook={fallbackOrderBook}
-            trades={data?.trades ?? []}
+            orderBook={selectedOrderBook}
+            trades={selectedTrades}
           />
         </section>
       </div>
