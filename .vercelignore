@@ -1,0 +1,5 @@
+services/shioaji-bridge
+.marketpulse
+.venv
+__pycache__
+*.py[cod]
