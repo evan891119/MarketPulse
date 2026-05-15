@@ -1,0 +1,13 @@
+services:
+  shioaji-bridge:
+    build:
+      context: ../..
+      dockerfile: services/shioaji-bridge/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - marketpulse-data:/app/.marketpulse
+
+volumes:
+  marketpulse-data:

@@ -9,6 +9,7 @@ It is intentionally limited to:
 - Stock tick subscriptions
 - Stock bid/ask subscriptions
 - Writing the latest market snapshot to a local JSON file
+- Optionally pushing the latest snapshot outbound to Upstash Redis REST
 
 It intentionally does not:
 
@@ -52,3 +53,37 @@ npm run dev
 
 The frontend reads `/api/market`, which reads the snapshot file when
 `MARKET_DATA_PROVIDER=shioaji`.
+
+## QNAP Container Manager
+
+For NAS deployment, use the compose file in this directory. It intentionally
+does not expose any inbound ports.
+
+Create the bridge env file:
+
+```bash
+cp services/shioaji-bridge/.env.example services/shioaji-bridge/.env
+```
+
+Fill these values:
+
+```bash
+SHIOAJI_API_KEY=your_server_side_key
+SHIOAJI_SECRET_KEY=your_server_side_secret
+SHIOAJI_FORCE_SIMULATION=true
+SHIOAJI_SYMBOLS=2330,2317,2454,2412
+UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_standard_token
+MARKETPULSE_SNAPSHOT_KEY=marketpulse:snapshot
+MARKETPULSE_UPSTASH_PUSH_INTERVAL_SECONDS=5
+```
+
+Run the container:
+
+```bash
+docker compose -f services/shioaji-bridge/docker-compose.qnap.yml up -d --build
+```
+
+The NAS bridge pushes snapshots to Upstash with outbound HTTPS only. Vercel
+should read the same key with `MARKET_DATA_PROVIDER=upstash` and an Upstash
+read-only token.

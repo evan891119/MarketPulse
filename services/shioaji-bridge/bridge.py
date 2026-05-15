@@ -7,6 +7,8 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass, field
 from datetime import date, datetime, time as time_of_day, timedelta, timezone
 from decimal import Decimal
@@ -17,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 DEFAULT_SYMBOLS = ["2330", "2317", "2454", "2412"]
 DEFAULT_SNAPSHOT_PATH = ".marketpulse/shioaji-snapshot.json"
+DEFAULT_UPSTASH_KEY = "marketpulse:snapshot"
 ENV_FILE = ".env.local"
 TAIPEI_TZ = ZoneInfo("Asia/Taipei")
 TWSE_OPEN = time_of_day(9, 0)
@@ -66,6 +69,13 @@ def decimal_to_float(value: Any, fallback: float = 0) -> float:
 def int_value(value: Any, fallback: int = 0) -> int:
     try:
         return int(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def float_env(name: str, fallback: float) -> float:
+    try:
+        return float(os.environ.get(name, fallback))
     except (TypeError, ValueError):
         return fallback
 
@@ -149,6 +159,66 @@ def symbol_names() -> dict[str, str]:
     }
 
 
+class UpstashPublisher:
+    def __init__(self, rest_url: str, token: str, key: str, min_interval_seconds: float):
+        self.rest_url = rest_url.rstrip("/")
+        self.token = token
+        self.key = key
+        self.min_interval_seconds = min_interval_seconds
+        self.last_publish_at = 0.0
+
+    @classmethod
+    def from_env(cls) -> "UpstashPublisher | None":
+        rest_url = os.environ.get("UPSTASH_REDIS_REST_URL")
+        token = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+
+        if not rest_url or not token:
+            return None
+
+        return cls(
+            rest_url=rest_url,
+            token=token,
+            key=os.environ.get("MARKETPULSE_SNAPSHOT_KEY", DEFAULT_UPSTASH_KEY),
+            min_interval_seconds=float_env(
+                "MARKETPULSE_UPSTASH_PUSH_INTERVAL_SECONDS",
+                5,
+            ),
+        )
+
+    def publish(self, payload: str, *, force: bool = False) -> None:
+        now = time.monotonic()
+
+        if (
+            not force
+            and self.min_interval_seconds > 0
+            and now - self.last_publish_at < self.min_interval_seconds
+        ):
+            return
+
+        command = json.dumps(["SET", self.key, payload]).encode("utf-8")
+        request = urllib.request.Request(
+            self.rest_url,
+            data=command,
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                body = response.read().decode("utf-8")
+                result = json.loads(body)
+
+                if result.get("error"):
+                    raise RuntimeError(result["error"])
+
+            self.last_publish_at = now
+        except (OSError, urllib.error.URLError, json.JSONDecodeError, RuntimeError) as error:
+            print(f"Warning: unable to push snapshot to Upstash: {error}", file=sys.stderr)
+
+
 @dataclass
 class QuoteState:
     symbol: str
@@ -196,6 +266,7 @@ class SnapshotStore:
         names = symbol_names()
         self.symbols = symbols
         self.snapshot_path = snapshot_path
+        self.upstash = UpstashPublisher.from_env()
         self.lock = threading.Lock()
         self.quotes = {
             symbol: QuoteState(symbol=symbol, name=names.get(symbol, symbol))
@@ -511,6 +582,9 @@ class SnapshotStore:
 
         temp_path.replace(self.snapshot_path)
 
+        if self.upstash:
+            self.upstash.publish(payload)
+
     def write_snapshot(self) -> None:
         with self.lock:
             self.write_snapshot_locked()
@@ -609,6 +683,11 @@ def main() -> int:
         flush=True,
     )
     print(f"Writing snapshot to {snapshot_path}.", flush=True)
+    if store.upstash:
+        print(
+            f"Pushing snapshot to Upstash key {store.upstash.key}.",
+            flush=True,
+        )
 
     while not shutdown.is_set():
         store.write_snapshot()

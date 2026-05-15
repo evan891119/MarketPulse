@@ -4,7 +4,7 @@ export type MarketConnectionStatus =
   | "offline"
   | "demo";
 
-export type MarketDataSource = "demo" | "shioaji";
+export type MarketDataSource = "demo" | "shioaji" | "upstash";
 export type MarketDataMode = "demo" | "live" | "snapshot" | "kbar";
 
 export type MarketSymbol = {

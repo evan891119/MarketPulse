@@ -15,12 +15,15 @@ quotes without exposing credentials in browser code.
 
 ## Market Data Modes
 
-MarketPulse currently supports a safe demo provider and a local Shioaji bridge.
+MarketPulse currently supports a safe demo provider, a local Shioaji bridge,
+and an Upstash Redis boundary for NAS-to-Vercel deployments.
 
 - `demo`: returns Taiwan stock demo data for local UI development.
 - `shioaji`: reads a local snapshot file written by the Python Shioaji quote
   bridge and falls back to an explicit Offline state when the bridge is not
   running.
+- `upstash`: reads the latest snapshot from Upstash Redis REST. This is the
+  intended production boundary when a QNAP NAS runs the bridge outbound-only.
 
 The frontend reads market data from `/api/market`; it does not import Shioaji
 or read secrets directly.
@@ -66,8 +69,19 @@ SHIOAJI_SNAPSHOT_FILE=shioaji-snapshot.json
 SHIOAJI_FORCE_SIMULATION=true
 ```
 
+Upstash-backed mode is for Vercel reading snapshots pushed by the NAS bridge:
+
+```bash
+MARKET_DATA_PROVIDER=upstash
+UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
+UPSTASH_REDIS_REST_READ_TOKEN=your_upstash_read_only_token
+MARKETPULSE_SNAPSHOT_KEY=marketpulse:snapshot
+MARKETPULSE_SNAPSHOT_MAX_AGE_MS=20000
+```
+
 Never prefix Shioaji credentials with `NEXT_PUBLIC_`; that would expose them to
-the browser bundle.
+the browser bundle. Upstash tokens are also server-side only in this app; do
+not use `NEXT_PUBLIC_` for them.
 
 ### Shioaji Quote Bridge
 
@@ -122,25 +136,65 @@ backend server.
 4. Set `MARKET_DATA_PROVIDER=demo` or leave environment variables unset.
 5. Deploy.
 
-### Shioaji Deployment Topology
+### QNAP NAS Deployment Topology
 
 Shioaji-backed realtime quotes require a long-running Python process. Vercel
 serverless functions are not the right place to run the Shioaji bridge because
 they are request-scoped and cannot maintain quote subscriptions.
 
-Use this topology for Shioaji-backed mode:
+Use this outbound-only topology for QNAP NAS deployments:
 
 - Vercel: hosts the Next.js dashboard.
-- Long-running host: runs `npm run shioaji:bridge` on a machine that can keep a
-  Python process alive, such as a local machine, VPS, NAS, or internal server.
-- Shared data boundary: the Next.js app reads the bridge snapshot from
-  `.marketpulse/shioaji-snapshot.json` in local/dev mode. For production
-  Shioaji-backed deployment, replace this local file boundary with a durable
-  store or private internal API reachable by the dashboard.
+- QNAP Container Manager: runs the Shioaji bridge container.
+- Upstash Redis: stores the latest `marketpulse:snapshot` value.
+- NAS bridge: connects outbound to Shioaji and Upstash over HTTPS.
+- Vercel app: reads Upstash from `/api/market` with `MARKET_DATA_PROVIDER=upstash`.
 
-Do not put Shioaji credentials in Vercel unless the deployment also includes a
-secure server-side bridge design. Never expose Shioaji credentials through
-`NEXT_PUBLIC_*`.
+Do not expose NAS ports, DDNS, public NAS APIs, or inbound Vercel-to-NAS
+traffic. The NAS should push data out; Vercel should never call into the NAS.
+
+### QNAP Container Manager
+
+Copy the bridge env example and fill it on the NAS:
+
+```bash
+cp services/shioaji-bridge/.env.example services/shioaji-bridge/.env
+```
+
+Required NAS bridge values:
+
+```bash
+SHIOAJI_API_KEY=your_server_side_key
+SHIOAJI_SECRET_KEY=your_server_side_secret
+SHIOAJI_FORCE_SIMULATION=true
+SHIOAJI_SYMBOLS=2330,2317,2454,2412
+UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_standard_token
+MARKETPULSE_SNAPSHOT_KEY=marketpulse:snapshot
+```
+
+Run the QNAP compose file from the repository root or import it in Container
+Manager:
+
+```bash
+docker compose -f services/shioaji-bridge/docker-compose.qnap.yml up -d --build
+```
+
+The compose file does not define `ports:`. It only needs outbound access to
+Shioaji and Upstash.
+
+Set these Vercel environment variables for the dashboard:
+
+```bash
+MARKET_DATA_PROVIDER=upstash
+UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
+UPSTASH_REDIS_REST_READ_TOKEN=your_upstash_read_only_token
+MARKETPULSE_SNAPSHOT_KEY=marketpulse:snapshot
+MARKETPULSE_SNAPSHOT_MAX_AGE_MS=20000
+```
+
+Do not put Shioaji credentials in Vercel for this topology. Vercel only needs
+the Upstash read token.
 
 ### Deployment Checklist
 
@@ -152,6 +206,8 @@ secure server-side bridge design. Never expose Shioaji credentials through
   are committed.
 - Demo deployment works without environment variables.
 - Shioaji bridge remains quote-only and `simulation=True`.
+- QNAP compose file has no inbound `ports:` mapping.
+- Vercel uses an Upstash read-only token when possible.
 
 ## Future Roadmap
 
